@@ -27,7 +27,10 @@ request:
 pip install qiskit-bip-mapper
 ```
 To install the plugin package. As part of the install process `pip` will install
-the no-cost version of CPLEX from PyPI, if you're going to use a 
+the no-cost version of CPLEX from PyPI automatically. However, if you're going to
+use the qiskit-bip-mapper plugin for running `transpile()` on circuits more than
+a couple qubits or with more than handful of 2 qubit gates you will likely need
+to install the commercial version of CPLEX.
 
 ## Using BIPMapping pass
 
