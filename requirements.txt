@@ -1,0 +1,3 @@
+qiskit-terra>=0.22.0
+cplex
+docplex
