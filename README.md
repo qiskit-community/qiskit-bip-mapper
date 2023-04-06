@@ -51,7 +51,7 @@ transpile(qc, backend, routing_method="bip")
 
 # Authors and Citation
 
-The BIPMapping pass is is the work of [many people](https://github.com/Qiskit/rustworkx/graphs/contributors)
+The qiskit-bip-mapper is the work of [many people](https://github.com/qiskit-community/qiskit-bip-mapper/graphs/contributors)
 who contribute to the project at different levels. Additionally, the plugin was
 originally developed as part of the Qiskit project itself and you can see the
 development history for it here:
