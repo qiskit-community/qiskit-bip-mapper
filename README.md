@@ -32,7 +32,7 @@ the no-cost version of CPLEX from PyPI, if you're going to use a
 ## Using BIPMapping pass
 
 Once you have the plugin package installed you can use the plugin via the
-``routing_method`` argument on Qiskit's `transpile()` function. For example,
+`routing_method="bip"` argument on Qiskit's `transpile()` function. For example,
 if you wanted to use the `BIPMapping` method to compile a 15 qubit quantum
 volume circuit for a backend you would do something like:
 
