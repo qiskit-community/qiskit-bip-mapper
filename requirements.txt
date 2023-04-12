@@ -1,3 +1,4 @@
+pbr>=5.7.0
 qiskit-terra>=0.22.0
 cplex
 docplex
