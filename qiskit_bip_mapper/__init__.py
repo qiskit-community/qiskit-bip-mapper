@@ -11,3 +11,7 @@
 # that they have been altered from the originals.
 
 """Qiskit BIPMapping transpiler pass plugin package."""
+
+import pbr.version
+
+__version__ = pbr.version.VersionInfo("qiskit-bip-mapper").release_string()
