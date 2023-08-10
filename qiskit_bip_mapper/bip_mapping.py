@@ -18,14 +18,18 @@ import math
 from qiskit.circuit import QuantumRegister
 from qiskit.circuit.library.standard_gates import SwapGate
 from qiskit.dagcircuit import DAGCircuit, DAGOpNode
+from qiskit.utils import optionals as _optionals
 from qiskit.transpiler import TransformationPass
 from qiskit.transpiler.exceptions import TranspilerError
-
 from qiskit_bip_mapper.bip_model import BIPMappingModel
+from qiskit.transpiler.target import target_to_backend_properties, Target
+from qiskit.transpiler.passes.layout import disjoint_utils
 
 logger = logging.getLogger(__name__)
 
 
+@_optionals.HAS_CPLEX.require_in_instance("BIP-based mapping pass")
+@_optionals.HAS_DOCPLEX.require_in_instance("BIP-based mapping pass")
 class BIPMapping(TransformationPass):
     r"""Map a DAGCircuit onto a given ``coupling_map``, allocating qubits and adding swap gates.
 
@@ -71,15 +75,18 @@ class BIPMapping(TransformationPass):
         max_swaps_inbetween_layers=None,
         depth_obj_weight=0.1,
         default_cx_error_rate=5e-3,
+        num_splits=1,
+        user_model_modifier=None,
     ):
         """BIPMapping initializer.
 
         Args:
-            coupling_map (CouplingMap): Directed graph represented a coupling map.
+            coupling_map (Union[CouplingMap, Target]): Directed graph represented a coupling map.
+
             qubit_subset (list[int]): Sublist of physical qubits to be used in the mapping.
                 If None, all qubits in the coupling_map will be considered.
-            objective (str): Type of objective function to be minimized:
 
+            objective (str): Type of objective function to be minimized:
                 * ``'gate_error'``: Approximate gate error of the circuit, which is given as the sum of
                     negative logarithm of 2q-gate fidelities in the circuit. It takes into account only
                     the 2q-gate (CNOT) errors reported in ``backend_prop`` and ignores the other errors
@@ -91,8 +98,11 @@ class BIPMapping(TransformationPass):
                 which are required in computing certain types of objective function
                 such as ``'gate_error'`` or ``'balanced'``. If this is not available,
                 default_cx_error_rate is used instead.
+
             time_limit (float): Time limit for solving BIP in seconds
+
             threads (int): Number of threads to be allowed for CPLEX to solve BIP
+            
             max_swaps_inbetween_layers (int):
                 Number of swaps allowed in between layers. If None, automatically set.
                 Large value could decrease the probability to build infeasible BIP problem but also
@@ -105,28 +115,58 @@ class BIPMapping(TransformationPass):
             default_cx_error_rate (float):
                 Default CX error rate to be used if backend_prop is not available.
 
+            num_splits (int):
+                Maximum number of splits for time-window heuristic. If 1, no heuristic is used (default).
+                If num_splits > 1, the full BIP model is chopped up into num_splits smaller models,
+                each of which tries to carefully optimize only a fraction of the circuit layers, while
+                performing some approximations on the remaining ones. This is useful for larger circuits
+                where the full BIP model is too slow. If num_splits = -1, the heuristic is used with an
+                automatically chosen number of splits.
+
+            user_model_modifier (function):
+                A function that takes as input two arguments: a BIPMappingModel object, and a DOCplex
+                model class. The function should perfom any desired model modifications directly onto
+                the DOCplex model. For example, it can add user constraints such as symmetry breaking
+                constraints. The BIPMappingModel is useful to retrieve information about the model
+                (eg., number of qubits, arcs). This function could be called multiple times if the
+                heuristic is used, so it is important that the function acts on the DOCplex model, and
+                does not break anything inside the BIPMappingModel.
+
         Raises:
             MissingOptionalLibraryError: if cplex or docplex are not installed.
             TranspilerError: if invalid options are specified.
+            ValueError: if input parameters are not valid.
         """
         super().__init__()
-        self.coupling_map = coupling_map
+        if isinstance(coupling_map, Target):
+            self.target = coupling_map
+            self.coupling_map = self.target.build_coupling_map()
+            self.backend_prop = target_to_backend_properties(self.target)
+        else:
+            self.target = None
+            self.coupling_map = coupling_map
+            self.backend_prop = None
         self.qubit_subset = qubit_subset
         if self.coupling_map is not None and self.qubit_subset is None:
             self.qubit_subset = list(range(self.coupling_map.size()))
         self.objective = objective
-        self.backend_prop = backend_prop
+        if backend_prop is not None:
+            self.backend_prop = backend_prop
         self.time_limit = time_limit
         self.threads = threads
         self.max_swaps_inbetween_layers = max_swaps_inbetween_layers
         self.depth_obj_weight = depth_obj_weight
         self.default_cx_error_rate = default_cx_error_rate
+        self.num_splits = num_splits
+        self.user_model_modifier = user_model_modifier
+        self._cpx_status = None
+        self._found_solution = False
+        if self.coupling_map is not None and self.qubit_subset is None:
+            self.qubit_subset = list(range(self.coupling_map.size()))
 
     def run(self, dag):
-        """Run the BIPMapping pass on ``dag``.
-
-        This assumes the number of virtual qubits (defined in ``dag``) and the number of
-        physical qubits (defined in `coupling_map`) are the same.
+        """Run the BIPMapping pass on `dag`, assuming the number of virtual qubits (defined in
+        `dag`) and the number of physical qubits (defined in `coupling_map`) are the same.
 
         Args:
             dag (DAGCircuit): DAG to map.
@@ -150,6 +190,9 @@ class BIPMapping(TransformationPass):
                 "BIPMapping requires the number of virtual and physical qubits to be the same. "
                 "Supply 'qubit_subset' to specify physical qubits to use."
             )
+        disjoint_utils.require_layout_isolated_to_component(
+            dag, self.coupling_map if self.target is None else self.target
+        )
 
         original_dag = dag
 
@@ -162,6 +205,7 @@ class BIPMapping(TransformationPass):
             coupling_map=self.coupling_map,
             qubit_subset=self.qubit_subset,
             dummy_timesteps=dummy_steps,
+            num_splits=self.num_splits,
         )
 
         if len(model.su4layers) == 0:
@@ -173,11 +217,14 @@ class BIPMapping(TransformationPass):
             backend_prop=self.backend_prop,
             depth_obj_weight=self.depth_obj_weight,
             default_cx_error_rate=self.default_cx_error_rate,
+            user_model_modifier=self.user_model_modifier,
         )
 
         status = model.solve_cpx_problem(time_limit=self.time_limit, threads=self.threads)
+        self._cpx_status = status
         if model.solution is None:
             logger.warning("Failed to solve a BIP problem. Status: %s", status)
+            self._found_solution = False
             return original_dag
 
         # Get the optimized initial layout
@@ -225,6 +272,8 @@ class BIPMapping(TransformationPass):
         self.property_set["layout"] = self._to_full_layout(optimized_layout)
         self.property_set["final_layout"] = self._to_full_layout(final_layout)
 
+        self._found_solution = True
+
         return mapped_dag
 
     @staticmethod
@@ -251,3 +300,14 @@ class BIPMapping(TransformationPass):
                 layout[idle_q] = qreg[idx]
             layout.add_register(qreg)
         return layout
+
+    @property
+    def cpx_status(self):
+        """Get the status of the last Cplex execution."""
+        return self._cpx_status
+
+    @property
+    def found_solution(self):
+        """Return True if solution was found during last execution,
+        False otherwise."""
+        return self._found_solution
