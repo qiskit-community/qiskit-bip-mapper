@@ -866,3 +866,4 @@ class BIPMappingModel:
                 if self.solution.get_value(f"x_{t}_{q}_{i}_{j}") > 0.5:
                     swaps.append((self.global_qubit[i], self.global_qubit[j]))
         return swaps
+        
