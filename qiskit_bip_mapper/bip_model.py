@@ -44,7 +44,7 @@ class BIPMappingModel:
     """
 
     def __init__(self, dag, coupling_map, qubit_subset, dummy_timesteps=None, num_splits=1):
-        """BIPModel initializer.
+        """Initialize a new BIPMappingModel object.
 
         Args:
             dag (DAGCircuit): DAG circuit to be mapped.
