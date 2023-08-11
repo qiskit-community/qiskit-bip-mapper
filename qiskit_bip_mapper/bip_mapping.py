@@ -102,7 +102,7 @@ class BIPMapping(TransformationPass):
             time_limit (float): Time limit for solving BIP in seconds
 
             threads (int): Number of threads to be allowed for CPLEX to solve BIP
-            
+
             max_swaps_inbetween_layers (int):
                 Number of swaps allowed in between layers. If None, automatically set.
                 Large value could decrease the probability to build infeasible BIP problem but also
