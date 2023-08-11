@@ -165,7 +165,9 @@ class BIPMapping(TransformationPass):
             self.qubit_subset = list(range(self.coupling_map.size()))
 
     def run(self, dag):
-        """Run the BIPMapping pass on `dag`, assuming the number of virtual qubits (defined in
+        """Run the BIPMapping pass on `dag`.
+
+        Run the BIPMapping pass on `dag, assuming the number of virtual qubits (defined in
         `dag`) and the number of physical qubits (defined in `coupling_map`) are the same.
 
         Args:
@@ -308,6 +310,8 @@ class BIPMapping(TransformationPass):
 
     @property
     def found_solution(self):
-        """Return True if solution was found during last execution,
-        False otherwise."""
+        """Return True if solution was found during last execution.
+
+        False otherwise.
+        """
         return self._found_solution
