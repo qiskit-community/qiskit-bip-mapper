@@ -188,12 +188,14 @@ class BIPMapping(TransformationPass):
             raise TranspilerError(
                 "Insufficient number of physical qubits. "
                 "BIPMapping requires the number of physical qubits to be equal "
-                 "or exceed the number of virtual qubits."
+                "or exceed the number of virtual qubits."
             )
 
         # Add dummy variables to dag so physical qubits = virtual qubits.
         if len(self.qubit_subset) > len(dag.qubits):
-            dag.add_qreg(QuantumRegister(size=(len(self.qubit_subset) - len(dag.qubits)), name="dummy"))
+            dag.add_qreg(
+                QuantumRegister(size=(len(self.qubit_subset) - len(dag.qubits)), name="dummy")
+            )
 
         disjoint_utils.require_layout_isolated_to_component(
             dag, self.coupling_map if self.target is None else self.target
