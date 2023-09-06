@@ -190,7 +190,7 @@ class BIPMapping(TransformationPass):
                 "BIPMapping requires the number of physical qubits to be equal "
                  "or exceed the number of virtual qubits."
             )
-        
+
         # Add dummy variables to dag so physical qubits = virtual qubits.
         if len(self.qubit_subset) > len(dag.qubits):
             dag.add_qreg(QuantumRegister(size=(len(self.qubit_subset) - len(dag.qubits)), name="dummy"))
