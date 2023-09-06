@@ -95,9 +95,9 @@ class BIPMappingModel:
         self.num_pqubits = self._coupling.size()
         self._arcs = self._coupling.get_edges()
 
-        if self.num_vqubits != self.num_pqubits:
+        if self.num_vqubits > self.num_pqubits:
             raise TranspilerError(
-                "BIPMappingModel assumes the same size of virtual and physical qubits."
+                "BIPMappingModel assumes the number of virtual qubits <= physical qubits."
             )
 
         self._index_to_virtual = dict(enumerate(dag.qubits))
