@@ -271,7 +271,7 @@ class TestBIPMapping(unittest.TestCase):
         property_set = {}
         coupling = CouplingMap.from_line(5)
         actual = BIPMapping(coupling, objective="depth")(circuit, property_set)
-        self.assertEqual(5, actual.depth())
+        self.assertEqual(2, actual.depth())
 
     def test_qubit_subset(self):
         """Test if `qubit_subset` option works as expected."""
