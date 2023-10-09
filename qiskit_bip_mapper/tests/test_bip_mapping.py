@@ -267,7 +267,7 @@ class TestBIPMapping(unittest.TestCase):
         circuit.cx(0, 1)
         circuit.cx(2, 3)
         circuit.cx(0, 3)
-        
+
         property_set = {}
         coupling = CouplingMap.from_line(5)
         actual = BIPMapping(coupling, objective="depth")(circuit, property_set)
