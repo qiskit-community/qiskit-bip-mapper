@@ -168,7 +168,7 @@ class BIPMapping(TransformationPass):
         """Run the BIPMapping pass on ``dag``.
 
         Run the BIPMapping pass on `dag, assuming the number of virtual qubits (defined in
-        `dag`) and the number of physical qubits (defined in `coupling_map`) are the same.
+        `dag`) is less than or equal to the number of physical qubits (defined in `coupling_map`).
 
         Args:
             dag (DAGCircuit): DAG to map.
@@ -178,20 +178,25 @@ class BIPMapping(TransformationPass):
                 returns the original dag.
 
         Raises:
-            TranspilerError: if the number of virtual and physical qubits are not the same.
+            TranspilerError: if the number of virtual qubits exeeds physical qubits.
             AssertionError: if the final layout is not valid.
         """
         if self.coupling_map is None:
             return dag
 
-        if len(dag.qubits) > len(self.qubit_subset):
-            raise TranspilerError("More virtual qubits exist than physical qubits.")
-
-        if len(dag.qubits) != len(self.qubit_subset):
+        if len(self.qubit_subset) < len(dag.qubits):
             raise TranspilerError(
-                "BIPMapping requires the number of virtual and physical qubits to be the same. "
-                "Supply 'qubit_subset' to specify physical qubits to use."
+                "Insufficient number of physical qubits. "
+                "BIPMapping requires the number of physical qubits to be equal "
+                "or exceed the number of virtual qubits."
             )
+
+        # Add dummy variables to dag so physical qubits = virtual qubits.
+        if len(self.qubit_subset) > len(dag.qubits):
+            dag.add_qreg(
+                QuantumRegister(size=(len(self.qubit_subset) - len(dag.qubits)), name="dummy")
+            )
+
         disjoint_utils.require_layout_isolated_to_component(
             dag, self.coupling_map if self.target is None else self.target
         )
