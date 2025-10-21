@@ -1,3 +1,7 @@
+> [!WARNING]  
+> **PROJECT NO LONGER MAINTAINED**  
+> Qiskit BIPMapping Plugin is no longer actively maintained or supported.
+
 # Qiskit BIPMapping Plugin
 
 This repository contains a standalone routing stage to use the ``BIPMapping``
